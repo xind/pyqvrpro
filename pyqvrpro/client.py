@@ -2,7 +2,7 @@ import base64
 import requests
 import untangle
 
-API_VERSION = '1.1.0'
+API_VERSION = '1.2.0'
 
 
 class Client(object):
@@ -10,7 +10,7 @@ class Client(object):
         """Initialize QVR client."""
 
         self._user = user
-        self._password = password
+        self._password = base64.b64encode(password.encode('ascii'))
         self._host = host
         self._protocol = protocol
         self._port = port
@@ -19,26 +19,26 @@ class Client(object):
         self._session_id = None
         self._qvrpro_uri = '/qvrpro'
 
+        self._is_qvrpro()
         self.connect()
 
     def _is_qvrpro(self):
         entry_url = self._get_endpoint_url('/qvrentry')
         response = requests.get(entry_url)
         responseobj = response.json()
-        if responseobj.get('is_qvp', '') == 'no':
-            self._qvrpro_uri = '/qvrelite'
-        else:
+        if responseobj.get('fw_web_ui_prefix', '') == 'qvrpro':
             self._qvrpro_uri = '/qvrpro'
+        else:
+            self._qvrpro_uri = '/qvrelite'
 
     def connect(self):
         """Login to QVR Pro."""
 
-        self._is_qvrpro()
         login_url = self._get_endpoint_url('/cgi-bin/authLogin.cgi')
 
         params = {
             'user': self._user,
-            'pwd': base64.b64encode(self._password.encode('ascii')),
+            'pwd': self._password,
             'serviceKey': 1,
             'verify': self._verifyssl
         }
@@ -54,11 +54,6 @@ class Client(object):
             raise AuthenticationError(msg='Authentication failed.')
 
         self._session_id = responseobj.authSid.cdata
-
-    def get_auth_string(self):
-        """Get user and password as auth string for url."""
-
-        return f"{self._user}:{self._password}"
 
     def list_cameras(self):
         """Get a list of configured cameras."""
@@ -145,12 +140,6 @@ class Client(object):
         content_type = resp.headers['content-type']
 
         if content_type == 'application/json':
-            if (not resp.ok):
-                """Error response returns malformed json so we can't get
-                    the actual error message."""
-                self._authenticated = False
-                raise QVRResponseError(resp.content.decode('UTF-8'))
-
             return resp.json()
 
         if content_type == 'image/jpeg':
@@ -158,10 +147,8 @@ class Client(object):
 
         return resp
 
-    def _get(self, uri, params=None):
+    def _get(self, uri, params={}):
         """Perform GET request"""
-
-        params = params or {}
 
         default_params = {
             'sid': self._session_id,
@@ -186,7 +173,7 @@ class Client(object):
 
         return self._parse_response(resp)
 
-    def _put(self, uri):
+    def _put(self, uri, json=None):
         """Do POST request."""
         params = {
             'sid': self._session_id,
@@ -195,9 +182,21 @@ class Client(object):
 
         url = self._get_endpoint_url(uri)
 
-        resp = requests.put(url, params=params)
+        resp = requests.put(url, json=json, params=params)
 
         return self._parse_response(resp)
+
+    def _delete(self, uri, json):
+        """Do DELETE request."""
+        params = {
+            'sid': self._session_id,
+        }
+
+        url = self._get_endpoint_url(uri)
+
+        resp = requests.delete(url, json=json, params=params)
+
+        return resp.ok
 
     def _get_endpoint_url(self, uri):
         """Get endpoint url."""
