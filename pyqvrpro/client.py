@@ -96,6 +96,9 @@ class Client(object):
 
     def get_channel_live_stream(self, guid, stream=0, protocol='hls'):
         """Get a live stream for a specific channel."""
+        if protocol not in ('hls', 'rtmp', 'rtsp'):
+            return ''
+
         url = f'{self._qvrpro_uri}/qshare/StreamingOutput' \
               f'/channel/{guid}/stream/{stream}/liveStream'
 
@@ -104,6 +107,19 @@ class Client(object):
         }
 
         return self._post(url, json=body)
+
+    def delete_channel_live_stream(self, guid, stream='rtsp', token=''):
+        """Delete a live stream for a specific channel."""
+
+        body = None
+        if stream != 'rtsp':
+            body = {
+                "token": token
+            }
+
+        url = f'{self._qvrpro_uri}/qshare/StreamingOutput' \
+            f'/channel/{guid}/stream/{stream}/liveStream'
+        return self._delete(url, json=body)
 
     def start_recording(self, guid):
         """Start recording a specific channel."""
