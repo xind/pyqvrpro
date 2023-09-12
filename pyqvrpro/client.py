@@ -148,6 +148,67 @@ class Client(object):
         }
         return self._get(url, params)
 
+    def get_vault_list(self):
+
+        return self._get(f'{self._qvrpro_uri}/qvrip/Vault/getVaultList')
+
+    def check_vault_name(self, name):
+        """Check whether the vault_name has been used."""
+        params = {
+            'vault_name': name
+        }
+
+        return self._get(f'{self._qvrpro_uri}/qvrip/Vault/checkVaultName', params)
+
+    def create_vault(self, json):
+        url = f'{self._qvrpro_uri}/qvrip/Vault/addVault'
+
+        return self._post(url, json=json)
+
+    def update_vault(self, json):
+        url = f'{self._qvrpro_uri}/qvrip/Vault/modifyVault'
+
+        return self._put(url, json=json)
+
+    def delete_vault(self, vault_id):
+        url = f'{self._qvrpro_uri}/qvrip/Vault/removeVault'
+        body = {
+            "vault": {
+                "vault_id_list": [vault_id]
+            }
+        }
+        return self._post(url, json=body)
+
+    def disable_vault(self, vault_id):
+        # NOTE: As of QVR Pro 2.4.1, sometimes this call will succeed but respond with a 500 error.
+        body = {
+            "vault": {
+                "vault_id": vault_id,
+                "enable": False
+            }
+        }
+        return self.update_vault(body)['ReturnStatus']['statusCode'] == 0
+
+    def bind_camera_to_vault(self, vault_id, channel_index, guid, channel_name):
+        body = {
+            "vault": {
+                "vault_id": vault_id,
+                "enable": True,
+                "channel_guid_list": [
+                    {
+                        "channel_index": channel_index,
+                        "guid": guid,
+                        "name": channel_name
+                    }
+                ]
+            }
+        }
+        return self.update_vault(body)
+
+    def send_metadata(self, vault_id, body):
+        url = f'{self._qvrpro_uri}/qvrip/Event/recvNotify/Generic/{vault_id}'
+        return self._post(url, json=body)
+
     def _parse_response(self, resp):
         """Return response depending on content type."""
         if not resp.ok:
