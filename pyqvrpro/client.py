@@ -1,6 +1,7 @@
 import base64
 import requests
 import untangle
+from urllib.parse import quote, urlencode
 
 API_VERSION = '1.2.0'
 
@@ -173,7 +174,10 @@ class Client(object):
 
         url = self._get_endpoint_url(uri)
 
-        resp = requests.get(url, {**default_params, **params})
+        encoded_params = urlencode({**default_params, **params}, quote_via=quote)
+        full_url = f"{url}?{encoded_params}"
+
+        resp = requests.get(full_url)
 
         return self._parse_response(resp)
 
