@@ -209,6 +209,18 @@ class Client(object):
         url = f'{self._qvrpro_uri}/qvrip/Event/recvNotify/Generic/{vault_id}'
         return self._post(url, json=body)
 
+    def _get_iva_license_plate_url(self):
+        url = f'/iva/v1/vehicle/license_plate/qsauth_type/0/qsauth_token/{self._session_id}'
+        return url
+
+    def query_iva_license_plate(self, params):
+        url = f'{self._qvrpro_uri}{self._get_iva_license_plate_url}'
+        return self._get(url, params=params)
+
+    def post_iva_license_plate(self, body):
+        url = f'{self._qvrpro_uri}{self._get_iva_license_plate_url}'
+        return self._post(url, json=body)
+
     def _parse_response(self, resp):
         """Return response depending on content type."""
         if not resp.ok:
